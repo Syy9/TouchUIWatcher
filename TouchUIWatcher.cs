@@ -36,9 +36,18 @@ namespace Syy.Tool
                 pointer.position = Input.mousePosition;
                 EventSystem.current.RaycastAll(pointer, results);
                 scrollPosition = Vector2.zero;
-                if (Data.instance.highlight && results.Any())
+                if (results.Any())
                 {
-                    EditorGUIUtility.PingObject(results.First().gameObject);
+                    if (Data.instance.type == HitActionType.Highlight)
+                    {
+                        EditorGUIUtility.PingObject(results.First().gameObject);
+                    }
+                    else if (Data.instance.type == HitActionType.Inspector)
+                    {
+                        var first = results.First().gameObject;
+                        EditorGUIUtility.PingObject(first);
+                        Selection.activeGameObject = first;
+                    }
                 }
                 Repaint();
             }
@@ -46,13 +55,21 @@ namespace Syy.Tool
 
         void OnGUI()
         {
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.LabelField("Mode", GUILayout.Width(40));
+                DrawBehaviourButton(HitActionType.None, EditorStyles.miniButtonLeft);
+                DrawBehaviourButton(HitActionType.Highlight, EditorStyles.miniButtonMid);
+                DrawBehaviourButton(HitActionType.Inspector, EditorStyles.miniButtonRight);
+            }
+
             if (!Application.isPlaying)
             {
-                EditorGUILayout.LabelField("Playing only");
+                EditorGUILayout.HelpBox("Playing Only\n・None: Nothing when touch\n・Highlight: Ping when touch\n・Inspector: Ping and select when touch", MessageType.Info);
                 return;
             }
 
-            Data.instance.highlight = EditorGUILayout.ToggleLeft($"Highlight     Hit {results.Count}", Data.instance.highlight);
+            EditorGUILayout.LabelField($"Hit {results.Count}");
             if (results.Count > 0)
             {
                 using (new EditorGUILayout.VerticalScope("box"))
@@ -69,9 +86,26 @@ namespace Syy.Tool
             }
         }
 
+        void DrawBehaviourButton(HitActionType type, GUIStyle style)
+        {
+            var prev = Data.instance.type == type;
+            var next = GUILayout.Toggle(prev, type.ToString(), style);
+            if (prev != next && next)
+            {
+                Data.instance.type = type;
+            }
+        }
+
         class Data : ScriptableSingleton<Data>
         {
-            public bool highlight = true;
+            public HitActionType type = HitActionType.Highlight;
+        }
+
+        enum HitActionType
+        {
+            None,
+            Highlight,
+            Inspector,
         }
     }
 }
